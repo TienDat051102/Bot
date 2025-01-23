@@ -21,9 +21,27 @@ def calculate_macd(data, short_window=12, long_window=26, signal_window=9):
     data.loc[:, 'Signal'] = data['MACD'].ewm(span=signal_window, adjust=False).mean()
     return data
 
+def calculate_support_resistance(data, window=10):
+    """
+    Xác định các mức hỗ trợ và kháng cự dựa trên giá cao/thấp trong một khoảng thời gian.
+    """
+    support_levels = []
+    resistance_levels = []
+
+    for i in range(window, len(data) - window):
+        # Kiểm tra xem giá thấp nhất trong khoảng có phải là hỗ trợ không
+        if data['Low'].iloc[i] == data['Low'].iloc[i - window:i + window].min():
+            support_levels.append((data['Date'].iloc[i], data['Low'].iloc[i]))
+
+        # Kiểm tra xem giá cao nhất trong khoảng có phải là kháng cự không
+        if data['High'].iloc[i] == data['High'].iloc[i - window:i + window].max():
+            resistance_levels.append((data['Date'].iloc[i], data['High'].iloc[i]))
+
+    return support_levels, resistance_levels
+
 def plot_macd_for_ticker(data, ticker, buy_signals, sell_signals):
     """
-    Vẽ biểu đồ cho một ticker cụ thể.
+    Vẽ biểu đồ cho một ticker cụ thể với các mức hỗ trợ/kháng cự.
     """
     buy_signals = buy_signals[buy_signals['Ticker'] == ticker]
     sell_signals = sell_signals[sell_signals['Ticker'] == ticker]
@@ -34,17 +52,26 @@ def plot_macd_for_ticker(data, ticker, buy_signals, sell_signals):
         return
 
     filtered_data = calculate_macd(filtered_data)
+    support_levels, resistance_levels = calculate_support_resistance(filtered_data)
 
     fig, ax = plt.subplots(figsize=(14, 7))
     ax.plot(filtered_data['Date'], filtered_data['Close'], label='Close Price', color='black', alpha=0.6)
 
+    # Buy/Sell signals
     if not buy_signals.empty: 
         ax.scatter(buy_signals['Buy_Date'], buy_signals['Buy_Price'], marker='^', color='green', label='Buy Signal', alpha=1)
 
     if not sell_signals.empty:  
         ax.scatter(sell_signals['Sell_Date'], sell_signals['Sell_Price'], marker='v', color='red', label='Sell Signal', alpha=1)
 
-    ax.set_title(f'MACD and Price with Buy/Sell Signals for {ticker}')
+    # Support/Resistance levels
+    for date, price in support_levels:
+        ax.axhline(price, linestyle='--', color='blue', alpha=0.6)
+
+    for date, price in resistance_levels:
+        ax.axhline(price, linestyle='--', color='orange', alpha=0.6)
+
+    ax.set_title(f'MACD and Price with Buy/Sell Signals and Support/Resistance for {ticker}')
     ax.legend(loc='upper left')
     plt.show()
 
