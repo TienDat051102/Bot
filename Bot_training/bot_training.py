@@ -1,8 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-import ipywidgets as widgets
-from ipywidgets import interactive
-from IPython.display import display
+from InquirerPy import inquirer
 
 def read_csv_file(file_path):
     """
@@ -11,7 +9,6 @@ def read_csv_file(file_path):
     data = pd.read_csv(file_path)
     data.columns = data.columns.str.replace('<', '').str.replace('>', '')
     data['Date'] = pd.to_datetime(data['DTYYYYMMDD'], format='%Y%m%d')
-    # data.set_index('Ticker', inplace=True)
     return data
 
 def calculate_macd(data, short_window=12, long_window=26, signal_window=9):
@@ -28,7 +25,6 @@ def plot_macd_for_ticker(data, ticker, buy_signals, sell_signals):
     """
     Vẽ biểu đồ cho một ticker cụ thể.
     """
-    # Lọc tín hiệu mua và bán theo ticker
     buy_signals = buy_signals[buy_signals['Ticker'] == ticker]
     sell_signals = sell_signals[sell_signals['Ticker'] == ticker]
     filtered_data = data[data['Ticker'] == ticker]
@@ -42,19 +38,15 @@ def plot_macd_for_ticker(data, ticker, buy_signals, sell_signals):
     fig, ax = plt.subplots(figsize=(14, 7))
     ax.plot(filtered_data['Date'], filtered_data['Close'], label='Close Price', color='black', alpha=0.6)
 
-    # Vẽ tín hiệu mua nếu có
-    if not buy_signals.empty:  # Kiểm tra nếu có tín hiệu mua
+    if not buy_signals.empty: 
         ax.scatter(buy_signals['Buy_Date'], buy_signals['Buy_Price'], marker='^', color='green', label='Buy Signal', alpha=1)
 
-    # Vẽ tín hiệu bán nếu có
-    if not sell_signals.empty:  # Kiểm tra nếu có tín hiệu bán
+    if not sell_signals.empty:  
         ax.scatter(sell_signals['Sell_Date'], sell_signals['Sell_Price'], marker='v', color='red', label='Sell Signal', alpha=1)
 
-    # Thiết lập tiêu đề và hiển thị biểu đồ
     ax.set_title(f'MACD and Price with Buy/Sell Signals for {ticker}')
     ax.legend(loc='upper left')
     plt.show()
-
 
 def get_buy_sell_signals(data):
     """
@@ -82,27 +74,19 @@ def get_buy_sell_signals(data):
 
 def main():
     file_path = "./du_lieu/du_lieu_chung_khoan.csv"  
-    data = read_csv_file(file_path)
+    data = read_csv_file(file_path) 
     
     tickers = data['Ticker'].unique()
-    
     data = calculate_macd(data)
-
     buy_df, sell_df = get_buy_sell_signals(data)
-    ticker_dropdown = widgets.Dropdown(
-    options=tickers,
-    value=tickers[0],  
-    description='Ticker:',
-    )
-
     
-    def update_ticker_plot(ticker):
-        plot_macd_for_ticker(data, ticker, buy_df, sell_df)
 
-    interactive_plot = interactive(update_ticker_plot, ticker=ticker_dropdown)
-    update_ticker_plot(tickers[0])  
+    selected_ticker = inquirer.select(
+        message="Chọn mã chứng khoán:",
+        choices=tickers.tolist()
+    ).execute()
 
-    display(ticker_dropdown, interactive_plot) 
+    plot_macd_for_ticker(data, selected_ticker, buy_df, sell_df)
 
 if __name__ == "__main__":
     main()
